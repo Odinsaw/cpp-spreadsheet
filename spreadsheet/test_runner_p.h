@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <map>
 #include <set>
@@ -8,20 +10,20 @@
 #include <vector>
 
 namespace TestRunnerPrivate {
-template <typename K, typename V, template <typename, typename> class Map>
-std::ostream& PrintMap(std::ostream& os, const Map<K, V>& m) {
-    os << "{";
-    bool first = true;
-    for (const auto& kv : m) {
-        if (!first) {
-            os << ", ";
+    template <typename K, typename V, template <typename, typename> class Map>
+    std::ostream& PrintMap(std::ostream& os, const Map<K, V>& m) {
+        os << "{";
+        bool first = true;
+        for (const auto& kv : m) {
+            if (!first) {
+                os << ", ";
+            }
+            first = false;
+            os << kv.first << ": " << kv.second;
         }
-        first = false;
-        os << kv.first << ": " << kv.second;
+        return os << "}";
     }
-    return os << "}";
 }
-}  // namespace TestRunnerPrivate
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& s) {
@@ -84,10 +86,12 @@ public:
         try {
             func();
             std::cerr << test_name << " OK" << std::endl;
-        } catch (std::exception& e) {
+        }
+        catch (std::exception& e) {
             ++fail_count;
             std::cerr << test_name << " fail: " << e.what() << std::endl;
-        } catch (...) {
+        }
+        catch (...) {
             ++fail_count;
             std::cerr << "Unknown exception caught" << std::endl;
         }
@@ -109,18 +113,20 @@ private:
 #define FILE_NAME __FILE__
 #endif
 
-#define ASSERT_EQUAL(x, y)                                                                       \
-    {                                                                                            \
-        std::ostringstream __assert_equal_private_os;                                            \
-        __assert_equal_private_os << #x << " != " << #y << ", " << FILE_NAME << ":" << __LINE__; \
-        AssertEqual(x, y, __assert_equal_private_os.str());                                      \
-    }
+#define ASSERT_EQUAL(x, y)                                               \
+  {                                                                      \
+    std::ostringstream __assert_equal_private_os;                        \
+    __assert_equal_private_os << #x << " != " << #y << ", " << FILE_NAME \
+                              << ":" << __LINE__;                        \
+    AssertEqual(x, y, __assert_equal_private_os.str());                  \
+  }
 
-#define ASSERT(x)                                                                   \
-    {                                                                               \
-        std::ostringstream __assert_private_os;                                     \
-        __assert_private_os << #x << " is false, " << FILE_NAME << ":" << __LINE__; \
-        Assert(x, __assert_private_os.str());                                       \
-    }
+#define ASSERT(x)                                                  \
+  {                                                                \
+    std::ostringstream __assert_private_os;                        \
+    __assert_private_os << #x << " is false, " << FILE_NAME << ":" \
+                        << __LINE__;                               \
+    Assert(x, __assert_private_os.str());                          \
+  }
 
 #define RUN_TEST(tr, func) tr.RunTest(func, #func)

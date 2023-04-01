@@ -13,10 +13,7 @@ using namespace std::literals;
 Sheet::~Sheet() {}
 
 bool PositionIsCorrect(Position pos) {
-	if (pos.col < 0 || pos.row < 0 || pos.col >= Position::MAX_COLS || pos.row >= Position::MAX_ROWS) {
-		return false;
-	}
-	return true;
+	return !(pos.col < 0 || pos.row < 0 || pos.col >= Position::MAX_COLS || pos.row >= Position::MAX_ROWS);
 }
 
 bool IsInsidePrintZone(Position pos, Size size) {
@@ -51,13 +48,7 @@ void Sheet::SetChildCells(Position pos, std::unique_ptr<Cell>& cell) {
 	}
 }
 
-void Sheet::SetCell(Position pos, std::string text) {
-	CheckPosition(pos);
-
-	auto temp_cell = std::make_unique<Cell>(*this);
-	temp_cell->Set(text);
-	CheckCircularDependency(pos, temp_cell.get());
-
+void Sheet::ResizeTable(Position pos) {
 	if (pos.row >= static_cast<int>(sheet_.size())) {
 		sheet_.resize(pos.row + 1);
 	}
@@ -66,7 +57,9 @@ void Sheet::SetCell(Position pos, std::string text) {
 	}
 	size_.cols = std::max(size_.cols, pos.col + 1);
 	size_.rows = std::max(size_.rows, pos.row + 1);
+}
 
+std::unique_ptr<Cell>& Sheet::AddNewCellToSheet(Position pos, std::unique_ptr<Cell>&& new_cell) {
 	auto& cell = sheet_.at(pos.row).at(pos.col);
 	if (cell) {
 		cell->Clear();
@@ -75,9 +68,19 @@ void Sheet::SetCell(Position pos, std::string text) {
 		++non_empty_cols[pos.col];
 		++non_empty_rows[pos.row];
 	}
-	cell = std::move(temp_cell);
+	cell = std::move(new_cell);
+	return cell;
+}
 
-	SetChildCells(pos, cell);
+void Sheet::SetCell(Position pos, std::string text) {
+	CheckPosition(pos);
+
+	auto temp_cell = std::make_unique<Cell>(*this);
+	temp_cell->Set(text);
+	CheckCircularDependency(pos, temp_cell.get());
+	ResizeTable(pos);
+	std::unique_ptr<Cell>& new_cell = AddNewCellToSheet(pos, std::move(temp_cell));
+	SetChildCells(pos, new_cell);
 }
 
 const CellInterface* Sheet::GetCell(Position pos) const {

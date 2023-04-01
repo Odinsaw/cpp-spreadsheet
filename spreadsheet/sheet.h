@@ -63,10 +63,10 @@ private:
 	}
 
 	void CheckPosition(Position pos) const;
-
 	void CheckCircularDependency(Position pos, const CellInterface* cell) const;
-
 	void SetChildCells(Position pos, std::unique_ptr<Cell>& cell);
+	void ResizeTable(Position pos);
+	std::unique_ptr<Cell>& AddNewCellToSheet(Position pos, std::unique_ptr<Cell>&& cell);
 
 	std::vector<Row> sheet_;
 	Size size_;

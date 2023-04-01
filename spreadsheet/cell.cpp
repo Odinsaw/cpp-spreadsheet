@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 #include <optional>
-
+#include <sstream>
 
 // Реализуйте следующие методы
 Cell::Cell(Sheet& sheet)
@@ -15,29 +15,28 @@ Cell::Cell(Sheet& sheet)
 
 Cell::~Cell() {}
 
-void Cell::Set(std::string text) {
-	if (!text.empty() && text.front() == '=' && text.length() > 1) {
+void Cell::Set(std::string text = ""s) {
+	if (text.empty()) {
+		impl_ = std::make_unique<EmptyImpl>();
+	}
+	else if (text.front() == FORMULA_SIGN && text.length() > 1) {
 		impl_ = std::make_unique<FormulaImpl>(text.substr(1), sheet_, cache_);
-		std::vector<Position> ref_cells = impl_->GetReferencedCells();
-		parent_cells_ = std::set<Position>(std::make_move_iterator(ref_cells.begin()), std::make_move_iterator(ref_cells.end()));
 	}
 	else {
 		impl_ = std::make_unique<TextImpl>(text);
 	}
+	std::vector<Position> ref_cells = impl_->GetReferencedCells();
+	parent_cells_ = std::set<Position>(std::make_move_iterator(ref_cells.begin()), std::make_move_iterator(ref_cells.end()));
 }
 
 void Cell::Clear() {
 	ClearCache();
 	child_cells_.clear();
-	parent_cells_.clear();
-	impl_ = std::make_unique<EmptyImpl>();
+	Set();
 }
 
 bool Cell::IsEmpty() const {
-	if (!impl_ || impl_->GetText() == std::string{}) {
-		return true;
-	}
-	return false;
+	return !impl_ || impl_->GetText() == std::string{};
 }
 
 Cell::Value Cell::GetValue() const {
@@ -66,21 +65,23 @@ std::string Cell::TextImpl::GetText() const {
 	return text_;
 }
 
-bool StringIsDouble(const char* str) {
-	char* endptr = 0;
-	strtod(str, &endptr);
-
-	if (*endptr != '\0' || endptr == str)
-		return false;
-	return true;
+std::optional<double> StringToDouble(const std::string& str) {
+	std::stringstream str_d(str);
+	double res;
+	if (str_d >> res && str_d.eof()) {
+		return res;
+	}
+	else {
+		return std::nullopt;
+	}
 }
 
 Cell::Value Cell::TextImpl::GetValue() const {
-	if (!text_.empty() && text_.front() == '\'') {
+	if (!text_.empty() && text_.front() == ESCAPE_SIGN) {
 		return text_.substr(1);
 	}
-	else if (StringIsDouble(text_.data())) {
-		return stod(text_);
+	else if (std::optional<double> result = StringToDouble(text_)) {
+		return result.value();
 	}
 	else {
 		return GetText();
@@ -88,7 +89,7 @@ Cell::Value Cell::TextImpl::GetValue() const {
 }
 
 std::string Cell::FormulaImpl::GetText() const {
-	return '=' + formula_->GetExpression();
+	return FORMULA_SIGN + formula_->GetExpression();
 }
 
 Cell::Value Cell::FormulaImpl::GetValue() const {
